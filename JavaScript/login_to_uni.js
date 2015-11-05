@@ -1,5 +1,10 @@
-// script to log in to my university wifi network
-// avoids losing all my wonderful open tabs when connecting to the network
+/**
+  * Phantom.js script, requires phantomjs to be installed.
+  *   script to log in to my university wifi network
+  *   avoids losing all my wonderful open tabs when connecting to the uni network
+  */
+
+
 
 casper = require('casper').create({});
 
