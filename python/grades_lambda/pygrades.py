@@ -26,7 +26,6 @@ from Email import send_message
 
 S3_BUCKET = 'iddy-lambda-grades'
 
-
 site_url = "https://my.vuw.ac.nz/cp/home/displaylogin";
 login_url = "https://my.vuw.ac.nz/cp/home/login"
 academic_record_url = "https://my.vuw.ac.nz/cp/ip/timeout?sys=sctssb&url=https://student-records.vuw.ac.nz/pls/webprod/twbkwbis.P_GenMenu?name=bmenu.P_MainMnu"

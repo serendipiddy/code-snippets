@@ -2,6 +2,8 @@ import boto3
 from credentials import email_from, email_to
 
 
+# https://boto3.readthedocs.org/en/latest/reference/services/ses.html#SES.Client.send_email
+
 def send_message(message):
     # SERVER = "localhost"
 
