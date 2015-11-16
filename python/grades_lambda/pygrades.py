@@ -22,9 +22,6 @@ academic_record_url = "https://my.vuw.ac.nz/cp/ip/timeout?sys=sctssb&url=https:/
 academic_record_ = "https://student-records.vuw.ac.nz/pls/webprod/bwsxacdh.P_FacStuInfo"
 host = "https://my.vuw.ac.nz/"
 
-user_name = ''
-user_pass = ''
-
 URLmatch1 = '\/\*URL\*\/ "(.+)"'
 URLmatch2 = '\/\*URL\*\/ \'(.+)\''
 pagetitle = '<title>(.+)</title>'
@@ -39,12 +36,6 @@ def try_match(match,text):
         sys.exit()
     return m
     
-def print_cookies(cookies):
-    i = 0
-    for c in cookies:
-        print("%d %s\n    %s %s" % (i, c.name, c.value, c.domain))
-        i += 1
-        
 def parse_grades(html):
     # define regular expressions
     match_course = '([A-Z]{4}\d{3})'
@@ -79,50 +70,30 @@ def parse_grades(html):
     results = [list(a) for a in results]
     return dict(zip(years, results))
     
-def get_student_records(s):
-    # print(s.cookies)
-    # print('\n')
+def get_student_records(session):
+    r_getrecords = session.get(academic_record_url, allow_redirects=True)
     
-    r_getrecords = s.get(academic_record_url, allow_redirects=True)
-    # print(r_getrecords.headers)
-    # print(r_getrecords.url)
-    # print(r_getrecords.text)
-    # print_cookies(r_getrecords.cookies)
-    # print_cookies(s.cookies)
-    # print('\n')
+    if r_getrecords.status_code != 200:
+        print('error, student records page not found (not status 200)')
+        sys.exit()
     
     # SUPER IMPORTANT need to set where it came from..
     refer = 'https://student-records.vuw.ac.nz/pls/webprod/twbkwbis.P_GenMenu?name=bmenu.P_MainMnu'
-    # s.cookies.clear('my.vuw.ac.nz','/','JSESSIONID')  # didn't help
-    s.headers.update({'referer':refer})
-    r_getrecords = s.get(academic_record_)
-    # print(r_getrecords.headers)
-    # print(r_getrecords.url)
-    # print_cookies(s.cookies)
+    session.headers.update({'referer':refer})
+    r_getrecords = session.get(academic_record_)
     
     print( "~~ %s" % try_match(pagetitle,r_getrecords.text))
       
-    # print(r_getrecords.text)
     return r_getrecords
-    
-def get_through_myvuw(s):
-    study_url = try_match(matchStudy,r_gethome.text)
-    r_study = s.get(host+academic_record_3, allow_redirects=True)
-    print(r_study.text)
-    # study_url = try_match(matchAcademic,r_study.text)
-    # print(r_study.url)
     
 s = requests.Session()
 
 # Get page and extract UUID for cookie
 print( "~~ Getting login page" )
 r_loginpage = s.get(site_url)
-# print_cookies(r_loginpage.cookies)
 uuid = try_match('uuid.value="(.+)";',r_loginpage.text)
 
-# print('~~ UUID is %s' % uuid)
-
-# construct POST request
+# construct POST request, log in
 data = {'pass':user_pass, 'user':user_name, 'uuid':uuid}
 print( "~~ Attempting to login.." )
 r_loggingin = s.post(login_url, data=data, allow_redirects=True)
@@ -130,17 +101,18 @@ print( "~~ %s" % try_match(pagetitle,r_loggingin.text))
 top_url = try_match(URLmatch1, r_loggingin.text)
 r_gethome = s.get(top_url, allow_redirects=True)
 
-# print(top_url)
+if r_gethome.status_code != 200:
+    print('error, homepage not found (not status 200)')
+    sys.exit()
 
-# print(r_gethome.text)
-# print_cookies(s.cookies)
-# r_gethome = s.get(site_url, allow_redirects=True)
-
-# print('\n')
+# get and process academic records
 raw_html = get_student_records(s)
 grades = parse_grades(raw_html.text)
 
+# get stored results
+
+# compare current re
 for y in grades:
     print("%s: %s" % (y,grades[y]))
 
-send_message('hello')
+# send_message('hello')
