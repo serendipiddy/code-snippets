@@ -1,6 +1,6 @@
 # Description
 
-Lambda function to query student records for new exam results. Uses Amazon SES to email when new results are released.
+AWS Lambda function to query student records for new exam results. Uses Amazon SES to email when new results are released.
 
 ## Setup
 
