@@ -3,6 +3,8 @@ import requests
 from credentials import user_name, user_pass
 import re, sys, json
 
+# import boto3
+# import botocore
 import boto
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -35,6 +37,7 @@ URLmatch1 = '\/\*URL\*\/ "(.+)"'
 pagetitle = '<title>(.+)</title>'
 
 def try_match(match,text):
+    """ Attempts to find match in text """
     try:
         m = re.search(match, text, re.IGNORECASE).group(1)
     except AttributeError:
@@ -43,6 +46,8 @@ def try_match(match,text):
     return m
     
 def parse_grades(html):
+    """ Parses the student records HTML, returning the grades """
+
     # define regular expressions
     match_course = '([A-Z]{4}\d{3})'
     match_grade = '"dddefault">([A-Z][\+\-]?|&nbsp;)<'  # match grades, not term
@@ -77,6 +82,7 @@ def parse_grades(html):
     return dict(zip(years, results))
     
 def get_student_records(session):
+    """ Accesses student records from VUW """
     r_getrecords = session.get(academic_record_url, allow_redirects=True)
     
     if r_getrecords.status_code != 200:
@@ -95,6 +101,7 @@ def get_student_records(session):
 def update_grades(new, bucket):
     """ Overwrite the existing grade record with the new one """
     print ('update grades')
+    
     k = bucket.new_key('%s.json' % user_name)
     k.set_contents_from_string(json.dumps(new))
     k.generate_url(expires_in=300, force_http=True)
@@ -103,8 +110,16 @@ def check_grades(grades):
     """ Compare the new grades with existing record """
     conn = boto.connect_s3()
     bucket = conn.get_bucket(S3_BUCKET)
-    
     key = bucket.get_key('%s.json' % user_name)
+    
+    # s3 = boto3.resource('s3')
+    # key = s3.Object('mybucket', '%s.json' % user_name)
+    
+    # check it exists
+    if not key:
+        update_grades(grades, bucket)
+        return True
+    
     test_grades_old = key.get_contents_as_string()
     
     grades_data_existing = json.loads(test_grades_old)
@@ -140,36 +155,43 @@ def format_grades(grades):
         
     return out
     
-s = requests.Session()
+def perform_duties():
+    """ Run the main task """
+    
+    s = requests.Session()
 
-# Get page and extract UUID
-print( "~~ Getting login page" )
-r_loginpage = s.get(site_url)
-uuid = try_match('uuid.value="(.+)";',r_loginpage.text)
+    # Get page and extract UUID
+    print( "~~ Getting login page" )
+    r_loginpage = s.get(site_url)
+    uuid = try_match('uuid.value="(.+)";',r_loginpage.text)
 
-# construct POST request, log in
-data = {'pass':user_pass, 'user':user_name, 'uuid':uuid}
-print( "~~ Attempting to login.." )
-r_loggingin = s.post(login_url, data=data, allow_redirects=True)
-print( "~~ %s" % try_match(pagetitle,r_loggingin.text))
-top_url = try_match(URLmatch1, r_loggingin.text)
-r_gethome = s.get(top_url, allow_redirects=True)
+    # construct POST request, log in
+    data = {'pass':user_pass, 'user':user_name, 'uuid':uuid}
+    print( "~~ Attempting to login.." )
+    r_loggingin = s.post(login_url, data=data, allow_redirects=True)
+    print( "~~ %s" % try_match(pagetitle,r_loggingin.text))
+    top_url = try_match(URLmatch1, r_loggingin.text)
+    r_gethome = s.get(top_url, allow_redirects=True)
 
-if r_gethome.status_code != 200:
-    print('error, homepage not found (not status 200)')
-    sys.exit()
+    if r_gethome.status_code != 200:
+        print('error, homepage not found (not status 200)')
+        sys.exit()
 
-# get and process academic records
-raw_html = get_student_records(s)
-grades = parse_grades(raw_html.text)
+    # get and process academic records
+    raw_html = get_student_records(s)
+    grades = parse_grades(raw_html.text)
 
-# compare current grades
-check_grades(grades)
-
-# grades = json.loads(grades)
-if check_grades(grades):
-    # format the recent year, and email
-    print (format_grades(grades))
-    # send_message(format_grades(grades))
-else:
-    print ('~~ No change to grades')
+    # compare current grades
+    if check_grades(grades):
+        # format the recent year, and email
+        print (format_grades(grades))
+        send_message(format_grades(grades))
+    else:
+        print ('~~ No change to grades')
+    
+def lambda_handler(event, context):
+    """ Call handler for AWS Lambda """
+    
+    perform_duties()
+    
+perform_duties()  # for offline

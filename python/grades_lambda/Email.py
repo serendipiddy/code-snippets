@@ -1,25 +1,32 @@
-import smtplib
+import boto3
 from credentials import email_from, email_to
 
-# adapted from: http://stackoverflow.com/a/24271220
 
 def send_message(message):
-    SERVER = "localhost"
+    # SERVER = "localhost"
 
     FROM = email_from
     TO = [email_to] # must be a list
     SUBJECT = "New Grades"
 
-    # Prepare actual message
-    message = """\
-    From: %s
-    To: %s
-    Subject: %s
-
-    %s
-    """ % (FROM, ", ".join(TO), SUBJECT, message)
-
-    # Send the mail
-    server = smtplib.SMTP(SERVER)
-    server.sendmail(FROM, TO, message)
-    server.quit()
+    client = boto3.client('ses')
+    response = client.send_email(
+        Source=FROM,
+        Destination={
+            'ToAddresses': TO,
+            'CcAddresses': [],
+            'BccAddresses': []
+        },
+        Message={
+            'Subject': {
+                'Data': SUBJECT
+            },
+            'Body': {
+                'Text': {
+                    'Data': message
+                }
+            }
+        }
+    )
+    
+    return response
