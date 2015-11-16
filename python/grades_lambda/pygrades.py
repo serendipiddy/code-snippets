@@ -99,7 +99,7 @@ def get_student_records(session):
     
 def update_grades(new, bucket):
     """ Overwrite the existing grade record with the new one """
-    print ('update grades')
+    print ('~~ update grades')
     
     k = bucket.new_key('%s.json' % user_name)
     k.set_contents_from_string(json.dumps(new))
