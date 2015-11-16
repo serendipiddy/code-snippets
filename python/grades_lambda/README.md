@@ -4,21 +4,21 @@ Lambda function to query student records for new exam results. Uses Amazon SES t
 
 ## Setup
 
-##Amazon
-  ### S3 bucket
+### Amazon
+#### S3 bucket
     create bucket (default access)
     set name of bucket on line 27 pygrades.py
-  ### SES
+#### SES
     verify the email address(s) you want to send from AND to
-  ### lambda
+#### lambda
     set role to read/write to S3 and SES
     event source: scheduled (hourly? daily?)
 
-##Function
-  ### setting credentials
+### Function
+#### setting credentials
     credentials_template.py > credentials.py
   
-  ### load on EC2
+#### load on EC2
     $ cd function_dir
     bundle up with modules
       $ pip intall requests -t .
@@ -26,11 +26,9 @@ Lambda function to query student records for new exam results. Uses Amazon SES t
       $ zip -r data *
     upload that file to lambda console
     
-   ### test it works
+#### test it works
      on lambda page 'test'
      should return null and '~~ update grades' in S3 folder
      an email should then arrive at the configured address
      
      To test emailing, delete the file in S3 and test again or wait for scheduled send
-  
-  
