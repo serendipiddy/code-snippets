@@ -2,7 +2,13 @@
 import requests
 from credentials import user_name, user_pass
 import re, sys, json
+
+import boto
+from boto.s3.connection import S3Connection
+from boto.s3.key import Key
+
 from Email import send_message
+
 
 # regex: http://stackoverflow.com/a/4667014
 # regex no case: http://stackoverflow.com/a/500870
@@ -16,6 +22,9 @@ from Email import send_message
 # elegant zipping to list: http://stackoverflow.com/a/8372442
 
 
+S3_BUCKET = 'iddy-lambda-grades'
+
+
 site_url = "https://my.vuw.ac.nz/cp/home/displaylogin";
 login_url = "https://my.vuw.ac.nz/cp/home/login"
 academic_record_url = "https://my.vuw.ac.nz/cp/ip/timeout?sys=sctssb&url=https://student-records.vuw.ac.nz/pls/webprod/twbkwbis.P_GenMenu?name=bmenu.P_MainMnu"
@@ -23,10 +32,7 @@ academic_record_ = "https://student-records.vuw.ac.nz/pls/webprod/bwsxacdh.P_Fac
 host = "https://my.vuw.ac.nz/"
 
 URLmatch1 = '\/\*URL\*\/ "(.+)"'
-URLmatch2 = '\/\*URL\*\/ \'(.+)\''
 pagetitle = '<title>(.+)</title>'
-matchStudy = 'href=\"(.+)\">My Study'
-matchAcademic = 'href=\"(.+)" title="">Academic'
 
 def try_match(match,text):
     try:
@@ -86,9 +92,57 @@ def get_student_records(session):
       
     return r_getrecords
     
+def update_grades(new, bucket):
+    """ Overwrite the existing grade record with the new one """
+    print ('update grades')
+    k = bucket.new_key('%s.json' % user_name)
+    k.set_contents_from_string(json.dumps(new))
+    k.generate_url(expires_in=300, force_http=True)
+    
+def check_grades(grades):
+    """ Compare the new grades with existing record """
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(S3_BUCKET)
+    
+    key = bucket.get_key('%s.json' % user_name)
+    test_grades_old = key.get_contents_as_string()
+    
+    grades_data_existing = json.loads(test_grades_old)
+    
+    for y in grades_data_existing:
+        if y not in grades:
+            print('year %s not found, updating' % y)
+            update_grades(grades, bucket)
+            return True
+        else:
+            new = grades[y]
+            old = grades_data_existing[y]
+            
+            for i in range(len(new)):
+                if old[i][1] != new[i][1]:
+                    print ('Grade change %s' % json.dumps(new[i]))
+                    update_grades(new, bucket)
+                    return True
+    
+    return False
+    
+def format_grades(grades):
+    """ Formats the most recent grades nicely to view """
+    # get most recent year
+    max = 0;
+    for y in grades:
+        if int(y)>max: max = int(y)
+    
+    # make pretty
+    out = 'Grades for %s:\n' % max
+    for entry in grades[str(max)]:
+        out = '%s%s %s\n' % (out, entry[0], entry[1])
+        
+    return out
+    
 s = requests.Session()
 
-# Get page and extract UUID for cookie
+# Get page and extract UUID
 print( "~~ Getting login page" )
 r_loginpage = s.get(site_url)
 uuid = try_match('uuid.value="(.+)";',r_loginpage.text)
@@ -109,10 +163,13 @@ if r_gethome.status_code != 200:
 raw_html = get_student_records(s)
 grades = parse_grades(raw_html.text)
 
-# get stored results
+# compare current grades
+check_grades(grades)
 
-# compare current re
-for y in grades:
-    print("%s: %s" % (y,grades[y]))
-
-# send_message('hello')
+# grades = json.loads(grades)
+if check_grades(grades):
+    # format the recent year, and email
+    print (format_grades(grades))
+    # send_message(format_grades(grades))
+else:
+    print ('~~ No change to grades')

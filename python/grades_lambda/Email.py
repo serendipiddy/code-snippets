@@ -1,12 +1,13 @@
 import smtplib
+from credentials import email_from, email_to
 
 # adapted from: http://stackoverflow.com/a/24271220
 
 def send_message(message):
     SERVER = "localhost"
 
-    FROM = "clouddy@ec2"
-    TO = ["serendipiddy@gmail.com"] # must be a list
+    FROM = email_from
+    TO = [email_to] # must be a list
     SUBJECT = "New Grades"
 
     # Prepare actual message
