@@ -1,4 +1,3 @@
-# from bs4 import BeautifulSoup as bs
 import requests
 from credentials import user_name, user_pass
 import re, sys, json
@@ -125,6 +124,7 @@ def check_grades(grades):
     
     for y in grades_data_existing:
         if y not in grades:
+            # detected a new year
             print('year %s not found, updating' % y)
             update_grades(grades, bucket)
             return True
@@ -132,10 +132,11 @@ def check_grades(grades):
             new = grades[y]
             old = grades_data_existing[y]
             
+            # see if any grades have been added/updated
             for i in range(len(new)):
                 if old[i][1] != new[i][1]:
                     print ('Grade change %s' % json.dumps(new[i]))
-                    update_grades(new, bucket)
+                    update_grades(grades, bucket)
                     return True
     
     return False
