@@ -23,7 +23,7 @@ from Email import send_message
 # elegant zipping to list: http://stackoverflow.com/a/8372442
 
 
-S3_BUCKET = 'iddy-lambda-grades'
+S3_BUCKET = 'bucket-for-grades-data'
 
 site_url = "https://my.vuw.ac.nz/cp/home/displaylogin";
 login_url = "https://my.vuw.ac.nz/cp/home/login"
